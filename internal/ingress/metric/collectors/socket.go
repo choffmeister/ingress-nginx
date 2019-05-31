@@ -221,9 +221,15 @@ func (sc *SocketCollector) handleMessage(msg []byte) {
 	}
 
 	for _, stats := range statsBatch {
-		if !sc.hosts.Has(stats.Host) {
-			klog.V(3).Infof("skiping metric for host %v that is not being served", stats.Host)
-			continue
+		host := ""
+		if sc.metricsPerHost {
+			// TODO check for wildcard match
+			if sc.hosts.Has(stats.Host) {
+				host = stats.Host
+			} else {
+				klog.V(3).Infof("skipping metric for host %v that is not being served", stats.Host)
+				continue
+			}
 		}
 
 		// Note these must match the order in requestTags at the top
@@ -236,7 +242,7 @@ func (sc *SocketCollector) handleMessage(msg []byte) {
 			"service":   stats.Service,
 		}
 		if sc.metricsPerHost {
-			requestLabels["host"] = stats.Host
+			requestLabels["host"] = host
 		}
 
 		collectorLabels := prometheus.Labels{

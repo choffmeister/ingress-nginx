@@ -140,6 +140,47 @@ func TestCollector(t *testing.T) {
 			wantAfter: `
 			`,
 		},
+		{
+			name: "wildcard metric object should update prometheus metrics",
+			data: []string{`[{
+				"host":"some.testshop.com",
+				"status":"200",
+				"bytesSent":150.0,
+				"method":"GET",
+				"path":"/admin",
+				"requestLength":300.0,
+				"requestTime":60.0,
+				"upstreamName":"test-upstream",
+				"upstreamIP":"1.1.1.1:8080",
+				"upstreamResponseTime":200,
+				"upstreamStatus":"220",
+				"namespace":"test-app-production",
+				"ingress":"web-yml",
+				"service":"test-app"
+			}]`},
+			metrics: []string{"nginx_ingress_controller_response_duration_seconds"},
+			wantBefore: `
+				# HELP nginx_ingress_controller_response_duration_seconds The time spent on receiving the response from the upstream server
+				# TYPE nginx_ingress_controller_response_duration_seconds histogram
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.005"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.01"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.025"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.05"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.1"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.25"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="0.5"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="1"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="2.5"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="5"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="10"} 0
+				nginx_ingress_controller_response_duration_seconds_bucket{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200",le="+Inf"} 1
+				nginx_ingress_controller_response_duration_seconds_sum{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200"} 200
+				nginx_ingress_controller_response_duration_seconds_count{controller_class="ingress",controller_namespace="default",controller_pod="pod",host="*.testshop.com",ingress="web-yml",method="GET",namespace="test-app-production",path="/admin",service="test-app",status="200"} 1
+			`,
+			removeIngresses: []string{"test-app-production/web-yml"},
+			wantAfter: `
+			`,
+		},
 
 		{
 			name: "multiple messages should increase prometheus metric by two",
@@ -297,7 +338,7 @@ func TestCollector(t *testing.T) {
 				t.Errorf("registering collector failed: %s", err)
 			}
 
-			sc.SetHosts(sets.NewString("testshop.com"))
+			sc.SetHosts(sets.NewString("testshop.com", "*.testshop.com"))
 
 			for _, d := range c.data {
 				sc.handleMessage([]byte(d))
